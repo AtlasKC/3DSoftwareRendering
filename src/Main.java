@@ -4,7 +4,6 @@ public class Main
     {
         Display display = new Display(800, 600, "3D Software Rendering");
         RenderContext target = display.GetFrameBuffer();
-        Stars3D stars = new Stars3D(4096, 64.0f, 20.0f);
         Vertex minYVert = new Vertex(-1, -1, 0);
         Vertex midYVert = new Vertex(0, 1, 0);
         Vertex maxYVert = new Vertex(1, -1, 0);
@@ -21,7 +20,6 @@ public class Main
             Matrix4f rotation = new Matrix4f().InitRotation(0.0f, rotCounter, 0.0f);
             Matrix4f transform = projection.Mul(translation.Mul(rotation));
             target.Clear((byte)0x00);
-            //stars.UpdateAndRender(target, delta);
             target.FillTriangle(maxYVert.Transform(transform),midYVert.Transform(transform),minYVert.Transform(transform));
             display.SwapBuffers();
         }
