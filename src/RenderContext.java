@@ -1,28 +1,8 @@
 public class RenderContext extends Bitmap
 {
-    private final int m_scanBuffer[];
-
     public RenderContext(int width, int height)
     {
         super(width, height);
-        m_scanBuffer = new int[height*2];
-    }
-
-    public void DrawScanBuffer(int y, int xMin, int xMax)
-    {
-        m_scanBuffer[y*2] = xMin;
-        m_scanBuffer[y*2+1]=xMax;
-    }
-
-    public void FillShape(int yMin, int yMax)
-    {
-        for(int i = yMin; i < yMax; i++)
-        {
-            int xMin = m_scanBuffer[i*2];
-            int xMax = m_scanBuffer[i*2+1];
-            for(int a = xMin; a < xMax; a++)
-                DrawPixel(a, i, (byte)0xFF, (byte)0xFF, (byte)0xFF, (byte)0xFF);
-        }
     }
 
     public void FillTriangle(Vertex v1, Vertex v2, Vertex v3)
@@ -49,36 +29,44 @@ public class RenderContext extends Bitmap
             maxYVert = midYVert;
             midYVert = tmp;
         }
-        float area = minYVert.TriangleAreaTimesTwo(maxYVert, midYVert);
-        int handedness = area >= 0 ? 1 : 0;
-        ScanConvertTriangle(minYVert, midYVert, maxYVert, handedness);
-        FillShape((int)Math.ceil(minYVert.GetY()), (int)Math.ceil(maxYVert.GetY()));
+        ScanTriangle(minYVert, midYVert, maxYVert, minYVert.TriangleAreaTimesTwo(maxYVert, midYVert) >= 0);
     }
 
-    public void ScanConvertTriangle(Vertex minYVert, Vertex midYVert, Vertex maxYVert, int handedness)
+    private void ScanTriangle(Vertex minYVert, Vertex midYVert, Vertex maxYVert, boolean handedness)
     {
-        ScanConvertLine(minYVert, maxYVert, handedness);
-        ScanConvertLine(minYVert, midYVert, 1 - handedness);
-        ScanConvertLine(midYVert, maxYVert, 1 - handedness);
+        Edge topToBottom = new Edge(minYVert,maxYVert);
+        Edge topToMiddle = new Edge(minYVert,midYVert);
+        Edge midToBottom = new Edge(midYVert,maxYVert);
+        ScanEdges(topToBottom, topToMiddle, handedness);
+        ScanEdges(topToBottom, midToBottom, handedness);
     }
 
-    private void ScanConvertLine(Vertex minYVert, Vertex maxYVert, int whichSide)
+    private void ScanEdges(Edge a, Edge b, boolean handedness)
     {
-        int xStart = (int)Math.ceil(minYVert.GetX());
-        int xEnd = (int)Math.ceil(maxYVert.GetX());
-        float xDist = maxYVert.GetX()-minYVert.GetX();
-        int yStart = (int)Math.ceil(minYVert.GetY());
-        int yEnd = (int)Math.ceil(maxYVert.GetY());
-        float yDist = maxYVert.GetY()-minYVert.GetY();
-        if(yDist<=0)
-            return;
-        float xStep = xDist/yDist;
-        float yPrestep = yStart - minYVert.GetY();
-        float curX = minYVert.GetX() + yPrestep * xStep;
+        Edge left = a;
+        Edge right = b;
+        if(handedness)
+        {
+            Edge temp = left;
+            left = right;
+            right = temp;
+        }
+
+        int yStart = b.GetYStart();
+        int yEnd   = b.GetYEnd();
         for(int j = yStart; j < yEnd; j++)
         {
-            m_scanBuffer[j*2+whichSide] = (int)Math.ceil(curX);
-            curX += xStep;
+            DrawScanLine(left, right, j);
+            left.Step();
+            right.Step();
         }
+    }
+
+    private void DrawScanLine(Edge left, Edge right, int j)
+    {
+        int xMin = (int)Math.ceil(left.GetX());
+        int xMax = (int)Math.ceil(right.GetX());
+        for(int i=xMin;i<xMax;i++)
+            DrawPixel(i, j, (byte)0xFF, (byte)0xFF, (byte)0xFF, (byte)0xFF);
     }
 }
